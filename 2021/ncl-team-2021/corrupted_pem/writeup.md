@@ -96,7 +96,7 @@ print(chunks)
 
 This code will output all of the locations of the integers in “chunks” and it will also print the
 actual hex data that we are extracting. This is important because we want to make sure the
-code is working. We can now run `openssl asn1parse -in testpem.pem`
+code is working. We can now run `openssl asn1parse -in testpem.pem`.
 
 This will automatically decode the DER format of our so we can compare our values. This
 confirms that our program is working (I also realized this command gives us the start positions
@@ -163,13 +163,13 @@ b6fabb385fec83e3fb33f1143ee4ecfccebaf1757fe1148a53ec9ce5c431eab23064d1a1bc3b6e48
 ```
 
 ## Looking at what we found + math
-So based on the above discoveries we now have some of the upper bits of n, none of e, none of d, some of the lower bits of p, all of q, all of d mod (p-1), some of d mod (q-1), and none of the rest. Let's call the d mod (p-1) and dmod (q-1) and dq respectively. It's about time we figure out how these variables are actually used. RSA depends on prime factorization of massive numbers, since this is a hard thing for computers to accomplish in a short period of time. So what we really need is to find both p and q prime factors. In order to find the rest of p we will have to use brute force. In order to make the brute force possible we have to use some math, which I won't describe in detail and will instead just provide the important formula.
+So based on the above discoveries we now have some of the upper bits of $n$, none of $e$, none of $d$, some of the lower bits of $p$, all of $q$, all of $d \mod (p-1)$, some of $d \mod (q-1)$, and none of the rest. Let's call the $d \mod (p-1)$ and $d \mod (q-1)$ and $dq$ respectively. It's about time we figure out how these variables are actually used. RSA depends on prime factorization of massive numbers, since this is a hard thing for computers to accomplish in a short period of time. So what we really need is to find both $p$ and $q$ prime factors. In order to find the rest of $p$ we will have to use brute force. In order to make the brute force possible we have to use some math, which I won't describe in detail and will instead just provide the important formula.
 
 $$
 p = \frac{e \cdot dp - 1}{k_p} \text{ where } 3 \leq k_p < e
 $$
 
-Notice that we are missing e, however a common choice for e is 65537 so we can guess that that is what was used for our corrupted key. If this was not the case we could easily brute force e as well. So now all we have to do is iterate through all of the values of k_p until we find a prime number whose lower bits match the ones we know. This gives us the value of p.
+Notice that we are missing $e$, however a common choice for $e$ is $65537$ so we can guess that that is what was used for our corrupted key. If this was not the case we could easily brute force $e$ as well. So now all we have to do is iterate through all of the values of $k_p$ until we find a prime number whose lower bits match the ones we know. This gives us the value of $p$.
 
 ```python
 import sympy
@@ -192,15 +192,13 @@ for kp in range(3, e):
 
 ## Math to recover the PEM file
 At this point we can calculate the rest of the variables we need to create a new pem file. I used
-the Crypto library to generate the RSA PEM file from n, e, d, p, and q.
+the Crypto library to generate the RSA PEM file from $n$, $e$, $d$, $p$, and $q$.
 
-$$
-\begin{aligned}
+\begin{align}
 n &= p \cdot q\\
 \phi &= (p-1) \cdot (q-1)\\
-d &= e^{-1} \mod \phi\\
-\end{aligned}
-$$
+d &= e^{-1} \mod \phi
+\end{align}
 
 ## We have the PEM file... now what?
 At this point we have the file completely reassembled and de-corrupted but how can we use it to
